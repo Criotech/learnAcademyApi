@@ -10,7 +10,7 @@ let User = require("../models/users");
 router.post('/signup', async function (req, res, next) {
   let user = User.find({ email: req.body.user })
 
-  if (user >= 1) {
+  if (user.length >= 1) {
     return res.status(409).json({
       message: "user already exist"
     })
@@ -37,7 +37,7 @@ router.post('/signup', async function (req, res, next) {
           })
           .catch(err => {
             res.status(500).json({
-              error: err
+              message: "Signup Error",
             })
           })
       }
@@ -51,7 +51,7 @@ router.post('/login', (req, res, next) => {
     .then((user) => {
       if (user.length < 1) {
         return res.status(401).json({
-          messsage: 'Auth failed'
+          message: 'Auth failed'
         })
       }
       bcrypt.compare(req.body.password, user[0].password, (err, result) => {
@@ -82,8 +82,8 @@ router.post('/login', (req, res, next) => {
       })
     })
     .catch(err => {
-      res.status(500).json({
-        error: err
+      res.status(409).json({
+        message: 'Login Error'
       })
     })
 })
@@ -112,7 +112,7 @@ router.get('/', (req, res, next) => {
   })
   .catch(err => {
     res.status(404).json({
-      error: err
+      message: 'Not Found'
     })
   })
 })
@@ -126,7 +126,7 @@ router.get('/:userId', (req, res, next) => {
   })
   .catch(err => {
     res.status(404).json({
-      error: err
+      message: 'Not Found'
     })
   })
 })
@@ -142,7 +142,7 @@ router.get('/:userId', (req, res, next) => {
       })
       .catch(err => {
         res.status(500).json({
-          error: err
+          message: 'Error Occured'
         })
       })
   })

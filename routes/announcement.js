@@ -41,7 +41,7 @@ router.get('/teacher/:classId', checkAuth, (req, res, next) => {
     Class.findOne({ _id: req.params.classId, teacher: req.userData.userId }).exec()
         .then(result => {
             if (result) {
-                Announcement.find().exec()
+                Announcement.find({ class: req.params.classId }).exec()
                     .then(result => {
                         let response = result.map(doc=> {
                             return {
@@ -114,10 +114,10 @@ router.delete('/teacher/:classId/:announcementId', checkAuth, (req, res, next) =
 
 //Stududent gets all announcements realted to his class
 router.get('/student/:classId', checkAuth, (req, res, next) => {
-    Class.findOne({ _id: req.params.classId, students: { $all: [req.userData.userEmail] } }).exec()
+    Class.findOne({ _id: req.params.classId, students: { $all: [ { "$elemMatch": {"studentEmail": req.userData.userEmail }} ] } }).exec()
         .then(result => {
             if (result) {
-                Announcement.find().exec()
+                Announcement.find({ class: req.params.classId }).exec()
                     .then(result => {
                         res.status(200).json(result)
                     })

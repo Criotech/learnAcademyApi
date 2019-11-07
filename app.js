@@ -12,6 +12,10 @@ let curriculumRouter = require('./routes/curriculum')
 let announcementRouter = require('./routes/announcement')
 let lecturesRouter = require('./routes/lectures')
 let classRouter = require('./routes/class')
+let profilesRouter = require('./routes/profiles')
+let testRouter = require('./routes/test')
+const fs = require("fs")
+
 
 var app = express();
 
@@ -31,13 +35,6 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/', indexRouter);
-app.use('/users', usersRouter);
-app.use('/class', classRouter);
-app.use(`/curriculum`, curriculumRouter);
-app.use('/announcement', announcementRouter);
-app.use('/lectures', lecturesRouter);
-
 app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
@@ -47,6 +44,26 @@ app.use(function(req, res, next) {
   }
   next();
 });
+
+app.get('/testing', (req, res) => {
+  console.log('hello')
+  var content
+    fs.readFile('./work.csv', function read(err, data) {
+    if (err) {
+        throw err;
+    }
+    content = data;
+})
+})
+
+app.use('/', indexRouter);
+app.use('/users', usersRouter);
+app.use('/class', classRouter);
+app.use(`/curriculum`, curriculumRouter);
+app.use('/announcement', announcementRouter);
+app.use('/lectures', lecturesRouter);
+app.use('/profiles', profilesRouter);
+app.use('/test', testRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
@@ -63,5 +80,7 @@ app.use(function(err, req, res, next) {
   res.status(err.status || 500);
   res.render('error');
 });
+
+app.listen(5000)
 
 module.exports = app;

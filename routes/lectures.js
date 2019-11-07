@@ -22,7 +22,7 @@ cloudinary.config({
 const storage = cloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    resource_type: 'raw',
+    resource_type: 'video',
     folder: 'learnAcademy'
   },
   allowedFormats: ["mp4", "pdf", "txt", "ppt", "docx"],
@@ -30,6 +30,7 @@ const storage = cloudinaryStorage({
 
 //file type validation
 function checkFileType(file, cb) {
+  console.log(file)
   //Allowed ext
   const filetypes = /pdf|docx|mp4|txt|ppt/;
   // check ext
@@ -60,8 +61,6 @@ const upload = multer({
 
 //teacher post lecture of a particular class
 router.post('/teacher/:classId', checkAuth, upload, (req, res, next) => {
-  console.log(req.body)
-  console.log(req.file)
   if (req.userData.userRole === 'teacher') {
     let newLecture = new Lecture({
       _id: new mongoose.Types.ObjectId(),
@@ -73,6 +72,7 @@ router.post('/teacher/:classId', checkAuth, upload, (req, res, next) => {
     })
     newLecture.save()
       .then(result => {
+        console.log(result)
         res.status(201).json({
           message: "Lecture uploaded successfully"
         })
@@ -90,12 +90,12 @@ router.post('/teacher/:classId', checkAuth, upload, (req, res, next) => {
   }
 })
 
-//teacher gets the list of all lectures
+//teacher gets the list of all lectures in  a  particular class
 router.get('/teacher/:classId', checkAuth, (req, res, next) => {
   Class.findOne({ _id: req.params.classId, teacher: req.userData.userId }).exec()
     .then(result => {
       if (result) {
-        Lecture.find().exec()
+        Lecture.find({ class: req.params.classId }).exec()
           .then(result => {
             let response = {
               count: result.length,
@@ -103,6 +103,8 @@ router.get('/teacher/:classId', checkAuth, (req, res, next) => {
                 return {
                   id: doc._id,
                   lecture: doc.lecture,
+                  title: doc.title,
+                  class: doc.class,
                   publicid: doc.publicid,
                   request: {
                     type: "GET",
@@ -122,7 +124,7 @@ router.get('/teacher/:classId', checkAuth, (req, res, next) => {
     })
 })
 
-//teacher gets the lecture data of a particular class
+//teacher gets the lecture data of a single lecture in a particular class
 router.get('/teacher/:classId/:lectureId', checkAuth, (req, res, next) => {
   Class.findOne({ _id: req.params.classId, teacher: req.userData.userId }).exec()
     .then(result => {
@@ -154,7 +156,7 @@ router.delete('/teacher/:classId/:lectureId', checkAuth, (req, res, next) => {
           Lecture.findOne({ _id: req.params.lectureId }).exec()
             .then(doc => {
               let publicId = doc.publicid
-              cloudinary.v2.uploader.destroy(publicId, {invalidate: true, resource_type: "raw"}, function () {
+              cloudinary.v2.uploader.destroy(publicId, {invalidate: true, resource_type: "video"}, function () {
                   Lecture.remove({ _id: req.params.lectureId })
                     .exec()
                     .then(result => {
@@ -181,6 +183,61 @@ router.delete('/teacher/:classId/:lectureId', checkAuth, (req, res, next) => {
       message: 'Access Denied',
     })
   }
+})
+
+//student gets the lectures of a particular class which he is registered to
+router.get('/student/:classId', checkAuth, (req, res, next)=>{
+  Class.findOne({ _id: req.params.classId, students: { $all: [ { "$elemMatch": {"studentEmail": req.userData.userEmail }} ] } }).exec()
+    .then(result => {
+      if (result) {
+        Lecture.find({ class: req.params.classId }).exec()
+          .then(result => {
+            let response = {
+              count: result.length,
+              lecturesData: result.map(doc => {
+                return {
+                  id: doc._id,
+                  title: doc.title,
+                  lecture: doc.lecture,
+                  publicid: doc.publicid,
+                  request: {
+                    type: "GET",
+                    url: `http://localhost:3000/lectures/teacher/${doc._id}`,
+                  }
+                }
+              })
+            }
+            res.status(200).json(response)
+          })
+          .catch(err => {
+            res.status(404).json({ message: 'error getting data' })
+          })
+      } else {
+        res.status(500).json({ message: 'Access Denied' })
+      }
+    })
+})
+
+//teacher gets the lecture data of a particular class
+router.get('/student/:classId/:lectureId', checkAuth, (req, res, next) => {
+  Class.findOne({ _id: req.params.classId, students: { $all: [req.userData.userEmail] } }).exec()
+    .then(result => {
+      if (result) {
+        Lecture.findOne({ _id: req.params.lectureId }).exec()
+          .then(result => {
+            res.status(200).json({
+              id: result._id,
+              lecture: result.lecture,
+              publicid: result.publicid
+            })
+          })
+          .catch(err => {
+            res.status(404).json({ message: 'error getting data' })
+          })
+      } else {
+        res.status(500).json({ message: 'Access Denied' })
+      }
+    })
 })
 
 module.exports = router;
