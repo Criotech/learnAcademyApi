@@ -238,7 +238,7 @@ router.post('/student', checkAuth, (req, res, next) => {
 
 //student gets a list of all the classes he is registered to
 router.get('/student', checkAuth, (req, res, next) => {
-    Class.find({ students: { $all: [ { "$elemMatch": {"studentEmail": req.userData.userEmail }} ] } })
+    Class.find({ students: { $all: [{ "$elemMatch": { "studentEmail": req.userData.userEmail } }] } })
         .populate("teacher", "fullName role")
         .select("_id className classImage")
         .exec()
@@ -250,7 +250,7 @@ router.get('/student', checkAuth, (req, res, next) => {
                     return {
                         classId: doc._id,
                         className: doc.className,
-                        classImage: doc.classImage,                        
+                        classImage: doc.classImage,
                         teacherName: doc.teacher.fullName,
                         request: {
                             type: "GET",

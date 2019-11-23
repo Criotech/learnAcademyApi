@@ -23,7 +23,8 @@ var app = express();
 dotenv.config();
 
 //connect mongodb
-mongoose.connect('mongodb://localhost:27017/learnacademyapi', { useNewUrlParser: true, useCreateIndex: true , useUnifiedTopology: true  }).then(console.log("database connected"));
+let db_uri = process.env.DB_URI;
+mongoose.connect(db_uri, { useNewUrlParser: true, useCreateIndex: true , useUnifiedTopology: true  }).then(console.log("database connected"));
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
