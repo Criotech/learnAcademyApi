@@ -67,10 +67,11 @@ router.post('/login', (req, res, next) => {
             userRole: user[0].role,
             userFullName: user[0].fullName
           },
-        process.env.JWT_KEY,
-      {
-        expiresIn: '1hr'
-      })
+        process.env.JWT_KEY
+      // {
+      //   expiresIn: '1hr'
+      // }
+    )
           return res.status(201).json({
             message: 'Auth Successful',
             token: token

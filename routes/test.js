@@ -6,41 +6,41 @@ const CSVToJSON = require('csvtojson');
 const fs = require("fs")
 const multer = require("multer");
 
-const  storage = multer.diskStorage({
-  destination: './public/uploads',
-  filename: function(req, file, cb){
-    cb(null, file.fieldname + "-" + Date.now() + path.extname(file.originalname));
-  }
+const storage = multer.diskStorage({
+    destination: './public/uploads',
+    filename: function (req, file, cb) {
+        cb(null, file.fieldname + "-" + Date.now() + path.extname(file.originalname));
+    }
 })
 
 //file type validation
 function checkFileType(file, cb) {
-  console.log(file)
-  //Allowed ext
-  const filetypes = /pdf|csv|ms-excel/;
-  // check ext
-  const extname = filetypes.test(path.extname
-    (file.originalname).toLowerCase());
-  //check mime
-  const mimetype = filetypes.test(file.mimetype)
+    console.log(file)
+    //Allowed ext
+    const filetypes = /pdf|csv|ms-excel/;
+    // check ext
+    const extname = filetypes.test(path.extname
+        (file.originalname).toLowerCase());
+    //check mime
+    const mimetype = filetypes.test(file.mimetype)
 
-  if (mimetype && extname) {
-    return cb(null, true);
-  } else {
-    cb(new Error('Error: .csv file types Only!'))
-  }
+    if (mimetype && extname) {
+        return cb(null, true);
+    } else {
+        cb(new Error('Error: .csv file types Only!'))
+    }
 }
 
 //multer configuration 
 const upload = multer({
-  storage: storage,
-//   limits: {
-//     fileSize: 30 * 1024 * 1024,  // 30 MB upload limit
-//     files: 1                    // 1 file
-//   },
-  fileFilter: function (req, file, cb) {
-    checkFileType(file, cb);
-  }
+    storage: storage,
+    //   limits: {
+    //     fileSize: 30 * 1024 * 1024,  // 30 MB upload limit
+    //     files: 1                    // 1 file
+    //   },
+    fileFilter: function (req, file, cb) {
+        checkFileType(file, cb);
+    }
 }).single("questions");
 
 
@@ -50,13 +50,13 @@ const checkAuth = require('../middleware/check-auth')
 const Class = require("../models/class");
 const Test = require("../models/test");
 
-router.post('/teacher/:classId', checkAuth, upload, async function(req, res, next) {
+router.post('/teacher/:classId', checkAuth, upload, async function (req, res, next) {
     console.log(req.file)
     let questionsData = await CSVToJSON().fromFile(`./public/uploads/${req.file.filename}`)
-    
+
     console.log(questionsData)
     if (req.userData.userRole === 'teacher') {
-    let questionsData = await CSVToJSON().fromFile(`./public/uploads/${req.file.filename}`)
+        let questionsData = await CSVToJSON().fromFile(`./public/uploads/${req.file.filename}`)
         Class.findOne({ _id: req.params.classId })
             .select("students")
             .exec()
@@ -77,7 +77,7 @@ router.post('/teacher/:classId', checkAuth, upload, async function(req, res, nex
                     }
                 })
                 // console.log(testData)
-                
+
                 Test.create(testData)
                     .then(result => {
                         console.log(result)
@@ -100,26 +100,26 @@ router.post('/teacher/:classId', checkAuth, upload, async function(req, res, nex
 })
 
 //teacher add timer 
-router.post('/teacher/timer/:classId', checkAuth, (req, res, next)=>{
+router.post('/teacher/timer/:classId', checkAuth, (req, res, next) => {
     console.log(req.body.timer)
-   
-    Test.findOneAndUpdate({ classId: req.params.classId }, { timer: req.body.timer  }, { upsert: true })
-                .then((result) => {
-                    console.log(result)
-                    res.status(201).json({ message: "timer updated successfully" })
-    })
+
+    Test.findOneAndUpdate({ classId: req.params.classId }, { timer: req.body.timer }, { upsert: true })
+        .then((result) => {
+            res.status(201).json({ message: "timer updated successfully" })
+        })
 })
 
 //teacher get the list of all created class
 router.get('/teacher/:classId', checkAuth, (req, res, next) => {
     Test.find({ classId: req.params.classId })
         .populate("classId", "className students")
-        .select("_id question options answer")
+        .select("_id question options answer timer")
         .exec()
         .then((result) => {
             let response = {
                 count: result.length,
-                topic: (result[0])?result[0].classId.className:null,
+                topic: (result[0]) ? result[0].classId.className : null,
+                timer: (result[0]) ? result[0].timer : "",
                 testData: result.map((doc) => {
                     return {
                         questionId: doc._id,
@@ -129,12 +129,13 @@ router.get('/teacher/:classId', checkAuth, (req, res, next) => {
                     }
                 })
             }
+            console.log(response)
             res.status(200).json(response)
         })
         .catch((error) => {
             res.status(404).json({
-            message: 'no result gotten',
-        })
+                message: 'no result gotten',
+            })
         })
 })
 
@@ -157,6 +158,22 @@ router.post('/teacher/:classId/:questionId', checkAuth, (req, res, next) => {
     })
 })
 
+router.delete('/teacher/:classId', checkAuth, (req, res, next) => {
+    Class.findOne({ _id: req.params.classId }).then(doc => {
+        if (doc) {
+            Test.remove({ classId: req.params.classId })
+                .then((result) => {
+                    res.status(201).json({
+                        message: "Test has been deleted succeessfully"
+                    })
+                })
+                .catch(err => {
+                    res.status(404).json('unable to delete test')
+                })
+        }
+    })
+})
+
 router.delete('/teacher/:classId/:questionId', checkAuth, (req, res, next) => {
     Class.findOne({ _id: req.params.classId }).then(doc => {
         if (doc) {
@@ -175,37 +192,39 @@ router.delete('/teacher/:classId/:questionId', checkAuth, (req, res, next) => {
 
 //students section
 router.post('/student/:classId', checkAuth, (req, res, next) => {
-    Test.find({ classId: req.params.classId, candidates: { $elemMatch: { studentId: req.body.studentId , status: false } } })
-    .select("_id question options answer timer")
-    .populate("classId", "className")    
-    .exec()
-    .then((result)=>{
-        if (result) {
-             let response = {
-                count: result.length,
-                topic: result[0].classId.className,
-                timer: result[0].timer,
-                testData: result.map((doc) => {
-                    return {
-                        questionId: doc._id,
-                        question: doc.question,
-                        options: doc.options,
-                        answer: doc.answer,
-                        userAns: ''
-                    }
-                })
+    Test.find({ classId: req.params.classId, candidates: { $elemMatch: { studentId: req.body.studentId, status: false } } })
+        .select("_id question options answer timer")
+        .populate("classId", "className")
+        .exec()
+        .then((result) => {
+            if (result) {
+                let response = {
+                    count: result.length,
+                    topic: result[0].classId.className,
+                    timer: result[0].timer,
+                    testData: result.map((doc) => {
+                        return {
+                            questionId: doc._id,
+                            question: doc.question,
+                            options: doc.options,
+                            answer: doc.answer,
+                            userAns: ''
+                        }
+                    })
+                }
+                res.status(200).json(response)
             }
-            res.status(200).json(response)
-        }
-    })
-    .catch((err)=>{
-        console.log(err)
-    })
+        })
+        .catch((err) => {
+            console.log(err)
+        })
 })
 
 //update candidate status to true after test has been taking 
-router.post('/student/status/:classId', checkAuth, (eq, res, next) => {
-
+router.post('/student/status/:classId', checkAuth, (req, res, next) => {
+    Test.update({ classId: req.params.classId, "candidates.studentId": req.body.studentId, "candidates.status": false }, { "$set": { 'candidates.$.status': true } }, { "multi": true }, (err, writeResult) => {
+        console.log(writeResult)
+    });
 })
 
 router.get('/student/:classId', checkAuth, (req, res, next) => {
@@ -223,7 +242,7 @@ router.get('/student/:classId', checkAuth, (req, res, next) => {
                         question: doc.question,
                         options: doc.options,
                         answer: doc.answer,
-                        candidates: candidates                        
+                        candidates: candidates
                     }
                 })
             }

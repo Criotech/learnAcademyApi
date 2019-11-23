@@ -194,7 +194,7 @@ router.post('/teacher/:classId/addStudent', checkAuth, (req, res, next) => {
                     })
             } else {
                 res.status(500).json({
-                    message: 'Access Denied',
+                    message: 'Student not registered on th platform'
                 })
             }
         })

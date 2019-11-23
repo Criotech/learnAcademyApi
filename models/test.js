@@ -9,7 +9,7 @@ let testSchema = new Schema({
     options: { type: Array, required: true, default: true },
     answer: { type: Number, required: true },
     candidates: { type: Array, default: [] },
-    timer: { type: String, default: '5' },
+    timer: { type: String, default: "300" },
     status: { type: Boolean, default: true }
  });
 
