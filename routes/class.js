@@ -10,6 +10,7 @@ const cloudinaryStorage = require("multer-storage-cloudinary");
 const checkAuth = require('../middleware/check-auth')
 
 let Class = require("../models/class");
+let Test = require("../models/test");
 let User = require("../models/users");
 
 
@@ -166,48 +167,54 @@ router.delete('/teacher/:classId', checkAuth, (req, res, next) => {
     }
 })
 
-
-//teacher register student to a particular class 
-router.post('/teacher/:classId/addStudent', checkAuth, (req, res, next) => {
+//teacher register student to a particular class
+router.post('/teacher/:classId/addStudent', checkAuth, async (req, res, next) => {
     if (req.userData.userRole === "teacher") {
-        User.findOne({ email: req.body.studentMail }).then(doc => {
-            if (doc) {
-                Class.findOneAndUpdate({ _id: req.params.classId }, {
-                    $push: {
-                        students: {
-                            "studentName": doc.fullName,
-                            "studentId": doc._id.toString(),
-                            "studentEmail": doc.email
-                        }
+        let studentToAdd = await User.findOne({ email: req.body.studentMail })
+        if (studentToAdd) {
+            let addStudentToClass = Class.findOneAndUpdate({ _id: req.params.classId }, {
+                $push: {
+                    students: {
+                        "studentName": studentToAdd.fullName,
+                        "studentId": studentToAdd._id.toString(),
+                        "studentEmail": studentToAdd.email
                     }
-                }, { upsert: true })
-                    .then(result => {
-                        res.status(201).json({
-                            message: "Student Enrolled Successfully"
-                        })
+                }
+            }, { upsert: true })
+                .then(result => {
+                    res.status(201).json({
+                        message: "Student Enrolled Successfully"
                     })
-                    .catch(err => {
-                        res.status(404).json({
-                            message: 'error occured during enrollment',
-                            error: err
-                        })
-                    })
-            } else {
-                res.status(500).json({
-                    message: 'Student not registered on th platform'
                 })
-            }
-        })
-    } else {
-        res.status(500).json({
-            message: 'Access Denied',
-        })
+                .catch(err => {
+                    res.status(404).json({
+                        message: 'error occured during enrollment',
+                        error: err
+                    })
+                })
+
+            let addStudentForTest = await Test.update({ classId: req.params.classId }, {
+                $addToSet: {
+                    candidates: {
+                        studentId: studentToAdd._id.toString(), status: false
+                    }
+                }
+            }, { "multi": true }, (err, writeResult) => {
+                console.log(writeResult)
+            });
+        } else {
+            res.status(500).json({
+                message: 'Student not registered on the platform'
+            })
+        }
     }
 })
+
+
 // students: [req.userData.userEmail] }
 //student class section 
 //student register for a particular class 
-router.post('/student', checkAuth, (req, res, next) => {
+router.post('/student', checkAuth, async (req, res, next) => {
     if (req.userData.userRole === "student") {
         Class.findOneAndUpdate({ _id: req.body.classId }, {
             $push: {
@@ -229,6 +236,16 @@ router.post('/student', checkAuth, (req, res, next) => {
                     error: err
                 })
             })
+
+            let addStudentForTest = await Test.update({ classId: req.body.classId }, {
+                $addToSet: {
+                    candidates: {
+                        studentId: req.userData.userId, status: false
+                    }
+                }
+            }, { "multi": true }, (err, writeResult) => {
+                console.log(writeResult)
+            });
     } else {
         res.status(500).json({
             message: 'Access Denied',
